@@ -11,6 +11,7 @@
 #include <valgrind/valgrind.h>
 #endif
 
+static uint boostCounter = 0; //Initialize boost counter
 
 /********************************************
 	
@@ -442,10 +443,24 @@ void yield(enum SCHED_CAUSE cause)
 		if(current->priority < MAX_PRIORITY)
 			current->priority ++;
 		break;
+	case SCHED_USER:
+		break;
 	case SCHED_MUTEX:
 		
 		break; 
+	default:
+		break;
 	}
+
+	//increment the counter
+	boostCounter++;
+	/*
+	if yield() is called too many times call priorityBoost()
+	*/
+	if(boostCounter == BOOST_FREQ){
+		priorityBoost();
+	}
+
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
@@ -468,6 +483,23 @@ void yield(enum SCHED_CAUSE cause)
 	   may have passed. Start a new timeslice...
 	  */
 	gain(preempt);
+}
+
+/*
+Boosts the priority of a thread by moving it to a higher priority queue
+*/
+
+void priorityBoost(){
+	for(int i=0; i<MAX_PRIORITY-1; i++){
+		while(!is_rlist_empty(&SCHED[i])){
+			TCB* tcb = rlist_pop_front(&SCHED[i]);
+			if(tcb->priority < MAX_PRIORITY - 1){
+				tcb->priority++;
+			}
+			sched_queue_add(tcb);
+		}
+	}
+	boostCounter = 0;
 }
 
 /*
