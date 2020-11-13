@@ -24,6 +24,12 @@
 #include "tinyos.h"
 #include "util.h"
 
+//Mod: set priority queues
+#define MAX_PRIORITY = 3
+
+
+
+
 /*****************************
  *
  *  The Thread Control Block
@@ -116,6 +122,8 @@ typedef struct thread_control_block {
 
 	enum SCHED_CAUSE curr_cause; /**< @brief The endcause for the current time-slice */
 	enum SCHED_CAUSE last_cause; /**< @brief The endcause for the last time-slice */
+
+  uint priority;  //Mod: priority of the thread in the scheduler
 
 #ifndef NVALGRIND
 	unsigned valgrind_stack_id; /**< @brief Valgrind helper for stacks. 

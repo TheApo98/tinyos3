@@ -170,7 +170,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->rts = QUANTUM;
 	tcb->last_cause = SCHED_IDLE;
 	tcb->curr_cause = SCHED_IDLE;
-
+	tcb->priority = MAX_PRIORITY - 1; //Mod: set priority to max
 	/* Compute the stack segment address and size */
 	void* sp = ((void*)tcb) + THREAD_TCB_SIZE;
 
@@ -225,7 +225,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[MAX_PRIORITY]; /* The scheduler queue */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -268,7 +268,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb->priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -326,8 +326,16 @@ static void sched_wakeup_expired_timeouts()
 */
 static TCB* sched_queue_select(TCB* current)
 {
+	
+	uint prio = current->priority;
+	
+	// Get head from highest priority non-empty queue
+	while(is_rlist_empty(&SCHED[prio]) && prio > 0){
+		prio--;
+	}
+
 	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	rlnode* sel = rlist_pop_front(&SCHED[prio]);
 
 	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
 
@@ -424,6 +432,20 @@ void yield(enum SCHED_CAUSE cause)
 	current->last_cause = current->curr_cause;
 	current->curr_cause = cause;
 
+	//adjaust priority depending on the SCHED_CAUSE
+	switch(cause){
+	case SCHED_QUANTUM:
+		if(current->priority > 0)
+			current->priority --;
+		break;
+	case SCHED_IO:
+		if(current->priority < MAX_PRIORITY)
+			current->priority ++;
+		break;
+	case SCHED_MUTEX:
+		
+		break; 
+	}
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
@@ -520,8 +542,11 @@ static void idle_thread()
   Initialize the scheduler queue
  */
 void initialize_scheduler()
-{
-	rlnode_init(&SCHED, NULL);
+{	
+	//Initialize every priority queue
+	for(int i=0; i<MAX_PRIORITY; i++ ){
+		rlnode_init(&SCHED[i], NULL);
+	}
 	rlnode_init(&TIMEOUT_LIST, NULL);
 }
 
