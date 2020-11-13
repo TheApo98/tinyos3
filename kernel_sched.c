@@ -446,7 +446,9 @@ void yield(enum SCHED_CAUSE cause)
 	case SCHED_USER:
 		break;
 	case SCHED_MUTEX:
-		
+		if(current->last_cause == SCHED_MUTEX && current->priority > 0){
+			current->priority --;
+		}
 		break; 
 	default:
 		break;

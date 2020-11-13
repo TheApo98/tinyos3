@@ -25,9 +25,9 @@
 #include "util.h"
 
 //Mod: set priority queues
-#define MAX_PRIORITY = 3
+#define MAX_PRIORITY 3
 //number of yield() calls between priority boosts 
-#define BOOST_FREQ = 100
+#define BOOST_FREQ 100
 
 void priorityBoost();   //the priority boost function
 
