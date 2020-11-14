@@ -328,7 +328,7 @@ static void sched_wakeup_expired_timeouts()
 static TCB* sched_queue_select(TCB* current)
 {
 	
-	uint prio = current->priority;
+	uint prio = MAX_PRIORITY - 1;
 	
 	// Get head from highest priority non-empty queue
 	while(is_rlist_empty(&SCHED[prio]) && prio > 0){
